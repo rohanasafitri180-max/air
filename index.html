@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Lab Maya: Fruits & Vegetables (Fase C SD)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            fredoka: ['Fredoka', 'sans-serif'],
+            quicksand: ['Quicksand', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              green: '#4ADE80',
+              darkgreen: '#166534',
+              orange: '#FB923C',
+              yellow: '#FACC15',
+              cream: '#FEFCE8',
+              accent: '#38BDF8',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    * {
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    body {
+      font-family: 'Quicksand', sans-serif;
+      background-color: #0f172a;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+    }
+    .app-container {
+      aspect-ratio: 16 / 9;
+      max-width: 100vw;
+      max-height: 100vh;
+      width: 100%;
+      height: 100%;
+    }
+    @media (max-aspect-ratio: 16/9) {
+      .app-container {
+        width: 100vw;
+        height: calc(100vw * 9 / 16);
+      }
+    }
+    @media (min-aspect-ratio: 16/9) {
+      .app-container {
+        height: 100vh;
+        width: calc(100vh * 16 / 9);
+      }
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 10px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(74, 222, 128, 0.5);
+      border-radius: 10px;
+    }
+    .draggable-item {
+      cursor: grab;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .draggable-item:active {
+      cursor: grabbing;
+      transform: scale(1.08);
+    }
+    .drop-zone {
+      transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+    }
+    .drop-zone.drag-over {
+      transform: scale(1.02);
+      border-color: #FACC15;
+      background-color: rgba(250, 204, 21, 0.15);
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-6px) rotate(2deg); }
+    }
+    .animate-float {
+      animation: float 3s ease-in-out infinite;
+    }
+    @keyframes pulse-light {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.85; transform: scale(0.97); }
+    }
+    .animate-pulse-btn {
+      animation: pulse-light 2s infinite;
+    }
+  </style>
+</head>
+<body class="flex items-center justify-center p-0 m-0 bg-slate-900 select-none">
+
+  <!-- MAIN WRAPPER 16:9 STYLED -->
+  <div id="appContainer" class="app-container relative bg-gradient-to-br from-emerald-50 via-teal-50 to-amber-50 rounded-none md:rounded-2xl shadow-2xl overflow-hidden flex flex-col justify-between border-0 md:border-4 border-emerald-400/30">
+
+    <!-- AUDIO SFX & VOICE SYNTHESIS CONTROL -->
+    <script>
+      // Audio Synthesizer via Web Audio API (Full Offline)
+      const AudioEngine = {
+        ctx: null,
+        soundEnabled: true,
+        init() {
+          if (!this.ctx) {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+          }
+        },
+        playClick() {
+          if (!this.soundEnabled) return;
+          this.init();
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(600, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(800, this.ctx.currentTime + 0.08);
+          gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.08);
+        },
+        playSuccess() {
+          if (!this.soundEnabled) return;
+          this.init();
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(440, now);
+          osc.frequency.setValueAtTime(554.37, now + 0.1);
+          osc.frequency.setValueAtTime(659.25, now + 0.2);
+          gain.gain.setValueAtTime(0.3, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(now + 0.4);
+        },
+        playError() {
+          if (!this.soundEnabled) return;
+          this.init();
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(220, now);
+          osc.frequency.setValueAtTime(180, now + 0.15);
+          gain.gain.setValueAtTime(0.25, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(now + 0.3);
+        },
+        playReset() {
+          if (!this.soundEnabled) return;
+          this.init();
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(700, now);
+          osc.frequency.exponentialRampToValueAtTime(300, now + 0.2);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(now + 0.2);
+        },
+        speak(text) {
+          if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-US';
+            utterance.rate = 0.85;
+            utterance.pitch = 1.0;
+            window.speechSynthesis.speak(utterance);
+          }
+        }
+      };
+    </script>
+
+    <!-- 1. SPLASH SCREEN -->
+    <div id="splashScreen" class="absolute inset-0 z-50 bg-gradient-to-br from-emerald-600 via-teal-600 to-green-700 flex flex-col items-center justify-between p-6 text-white text-center">
+      <!-- Background SVG Elements -->
+      <div class="absolute inset-0 opacity-10 pointer-events-none flex flex-wrap justify-around items-center p-4">
+        <span class="text-6xl animate-float">🍎</span>
+        <span class="text-6xl animate-float" style="animation-delay: 1s;">🥦</span>
+        <span class="text-6xl animate-float" style="animation-delay: 1.5s;">🍌</span>
+        <span class="text-6xl animate-float" style="animation-delay: 0.5s;">🥕</span>
+      </div>
+
+      <!-- Header Info -->
+      <div class="w-full flex justify-between items-center z-10">
+        <span class="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-semibold tracking-wide border border-white/30">
+          🇮🇩 SD FASE C (Kelas 5 - 6)
+        </span>
+        <button id="toggleSoundSplashBtn" onclick="toggleSound()" class="bg-white/20 hover:bg-white/30 p-2 rounded-full backdrop-blur-md transition">
+          <svg id="soundOnIcon" class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M17.586 6.414a9 9 0 010 12.728M11 5L6 9H2v6h4l5 4V5z"/></svg>
+          <svg id="soundOffIcon" class="w-5 h-5 text-red-300 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clip-rule="evenodd"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/></svg>
+        </button>
+      </div>
+
+      <!-- Main Title Section -->
+      <div class="z-10 my-auto flex flex-col items-center">
+        <div class="inline-flex items-center space-x-2 bg-amber-400 text-amber-950 font-bold px-4 py-1.5 rounded-full text-xs md:text-sm shadow-lg mb-3">
+          <span>✨ LAB MAYA BAHASA INGGRIS ✨</span>
+        </div>
+        <h1 class="font-fredoka text-3xl md:text-5xl lg:text-6xl font-bold tracking-wider drop-shadow-md text-amber-200">
+          Fruits & Vegetables
+        </h1>
+        <p class="font-quicksand text-sm md:text-lg text-emerald-100 mt-2 max-w-lg">
+          Media Pembelajaran Interaktif Klasifikasi Buah & Sayuran untuk Siswa Sekolah Dasar
+        </p>
+
+        <!-- Progress Loading Area -->
+        <div id="loadingArea" class="w-64 md:w-80 mt-6 bg-white/20 rounded-full h-4 overflow-hidden p-0.5 border border-white/30 relative">
+          <div id="progressBar" class="bg-amber-400 h-full rounded-full transition-all duration-300 w-0"></div>
+        </div>
+        <p id="loadingText" class="text-xs text-emerald-200 mt-2 font-mono">Memuat Laboratorium Virtual... 0%</p>
+
+        <!-- Start Button (hidden until loaded) -->
+        <button id="startBtn" onclick="startApp()" class="hidden mt-6 bg-amber-400 hover:bg-amber-300 text-amber-950 font-fredoka font-bold text-lg md:text-xl px-8 py-3 rounded-full shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-200 animate-pulse-btn border-2 border-amber-200">
+          🚀 MULAI LAB MAYA
+        </button>
+      </div>
+
+      <!-- Footer Dev Note -->
+      <div class="z-10 text-xs text-emerald-200/80 font-light">
+        Dikembangkan oleh: <span class="font-semibold text-white">Guru SD Pengembang Lab Maya</span> | Mode Standalone 100% Offline
+      </div>
+    </div>
+
+    <!-- 2. HEADER & NAVIGATION BAR -->
+    <header class="bg-white/90 backdrop-blur-md border-b border-emerald-100 px-4 py-2.5 flex items-center justify-between shrink-0 shadow-sm z-20">
+      <!-- Title & Badge -->
+      <div class="flex items-center space-x-2">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-green-400 flex items-center justify-center text-white font-bold shadow-md text-lg">
+          🥗
+        </div>
+        <div>
+          <h2 class="font-fredoka text-base md:text-lg font-bold text-slate-800 leading-tight">Lab Maya English</h2>
+          <p class="text-[10px] md:text-xs text-emerald-600 font-semibold">Kinds of Fruits & Vegetables</p>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="flex items-center bg-slate-100 p-1 rounded-xl shadow-inner space-x-1">
+        <button onclick="switchTab('teori')" id="tab-teori" class="tab-btn px-2.5 md:px-4 py-1.5 rounded-lg text-xs md:text-sm font-bold transition-all duration-200 flex items-center space-x-1 text-slate-600 hover:text-emerald-700">
+          <span>📖</span> <span class="hidden sm:inline">Teori</span>
+        </button>
+        <button onclick="switchTab('prosedur')" id="tab-prosedur" class="tab-btn px-2.5 md:px-4 py-1.5 rounded-lg text-xs md:text-sm font-bold transition-all duration-200 flex items-center space-x-1 text-slate-600 hover:text-emerald-700">
+          <span>📋</span> <span class="hidden sm:inline">Prosedur</span>
+        </button>
+        <button onclick="switchTab('simulasi')" id="tab-simulasi" class="tab-btn px-2.5 md:px-4 py-1.5 rounded-lg text-xs md:text-sm font-bold transition-all duration-200 flex items-center space-x-1 text-slate-600 hover:text-emerald-700">
+          <span>🔬</span> <span class="hidden sm:inline">Simulasi</span>
+        </button>
+        <button onclick="switchTab('lkpd')" id="tab-lkpd" class="tab-btn px-2.5 md:px-4 py-1.5 rounded-lg text-xs md:text-sm font-bold transition-all duration-200 flex items-center space-x-1 text-slate-600 hover:text-emerald-700">
+          <span>📝</span> <span class="hidden sm:inline">LKPD</span>
+        </button>
+        <button onclick="switchTab('pengembang')" id="tab-pengembang" class="tab-btn px-2.5 md:px-4 py-1.5 rounded-lg text-xs md:text-sm font-bold transition-all duration-200 flex items-center space-x-1 text-slate-600 hover:text-emerald-700">
+          <span>👨‍🏫</span> <span class="hidden sm:inline">Pengembang</span>
+        </button>
+      </nav>
+
+      <!-- Global Sound Toggle -->
+      <button onclick="toggleSound()" class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition">
+        <svg id="headerSoundIcon" class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M17.586 6.414a9 9 0 010 12.728M11 5L6 9H2v6h4l5 4V5z"/></svg>
+      </button>
+    </header>
+
+    <!-- 3. MAIN CONTENT BODY (Scrollable viewport content) -->
+    <main class="flex-1 overflow-hidden relative p-3 md:p-4">
+
+      <!-- TAB 1: TEORI (Vocabulary Cards) -->
+      <section id="content-teori" class="tab-content h-full flex flex-col hidden">
+        <div class="flex justify-between items-center mb-2 shrink-0">
+          <div>
+            <h3 class="font-fredoka text-lg md:text-xl font-bold text-slate-800">Vocabulary Cards (Kosakata)</h3>
+            <p class="text-xs text-slate-500">Klik ikon suara 🔊 untuk mendengarkan pengucapan kata dalam bahasa Inggris!</p>
+          </div>
+          <span class="bg-emerald-100 text-emerald-800 text-xs px-3 py-1 rounded-full font-bold">10 Items</span>
+        </div>
+
+        <div class="flex-1 overflow-y-auto custom-scrollbar pr-1 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+          <!-- Card Template generator dynamic via JS -->
+          <div id="vocabularyGrid" class="contents"></div>
+        </div>
+      </section>
+
+      <!-- TAB 2: PROSEDUR -->
+      <section id="content-prosedur" class="tab-content h-full flex flex-col hidden">
+        <div class="bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-slate-100 h-full overflow-y-auto custom-scrollbar flex flex-col justify-between">
+          <div>
+            <div class="flex items-center space-x-2 mb-3">
+              <span class="text-2xl">📋</span>
+              <h3 class="font-fredoka text-xl font-bold text-slate-800">Prosedur Penggunaan Lab Maya</h3>
+            </div>
+            <p class="text-xs md:text-sm text-slate-600 mb-4">
+              Ikuti langkah-langkah berikut untuk menyelesaikan aktivitas eksperimen klasifikasi buah dan sayuran di Lab Maya ini:
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 flex flex-col justify-between">
+                <div>
+                  <div class="w-7 h-7 bg-emerald-500 text-white rounded-full flex items-center justify-center font-bold text-xs mb-2">1</div>
+                  <h4 class="font-bold text-slate-800 text-sm mb-1">Pelajari Kosakata (Teori)</h4>
+                  <p class="text-xs text-slate-600">Buka tab <strong>Teori</strong>, klik ikon suara pada tiap kartu untuk mendengarkan pelafalan bahasa Inggris yang tepat.</p>
+                </div>
+                <span class="text-3xl text-right mt-2">📖</span>
+              </div>
+
+              <div class="bg-amber-50 border border-amber-200 rounded-xl p-3.5 flex flex-col justify-between">
+                <div>
+                  <div class="w-7 h-7 bg-amber-500 text-white rounded-full flex items-center justify-center font-bold text-xs mb-2">2</div>
+                  <h4 class="font-bold text-slate-800 text-sm mb-1">Lakukan Simulasi Soroting</h4>
+                  <p class="text-xs text-slate-600">Masuk ke tab <strong>Simulasi</strong>. Tarik (drag) atau klik item ke keranjang yang sesuai (<strong>FRUITS</strong> atau <strong>VEGETABLES</strong>).</p>
+                </div>
+                <span class="text-3xl text-right mt-2">🧺</span>
+              </div>
+
+              <div class="bg-sky-50 border border-sky-200 rounded-xl p-3.5 flex flex-col justify-between">
+                <div>
+                  <div class="w-7 h-7 bg-sky-500 text-white rounded-full flex items-center justify-center font-bold text-xs mb-2">3</div>
+                  <h4 class="font-bold text-slate-800 text-sm mb-1">Kerjakan LKPD Interactive</h4>
+                  <p class="text-xs text-slate-600">Jawab pertanyaan di tab <strong>LKPD</strong> untuk menguji pemahamanmu, lalu tekan tombol <strong>Periksa Nilai</strong>.</p>
+                </div>
+                <span class="text-3xl text-right mt-2">✍️</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4 p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+            <span class="text-xs text-slate-600 font-semibold">Sudah paham prosedurnya? Ayo mulai simulasinya!</span>
+            <button onclick="switchTab('simulasi')" class="bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold px-4 py-2 rounded-lg shadow transition">
+              Ke Tab Simulasi 🚀
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: SIMULASI (Lab Interaktif Drag & Drop) -->
+      <section id="content-simulasi" class="tab-content h-full flex flex-col">
+        <!-- Top Toolbar Score & Controls -->
+        <div class="bg-white/90 backdrop-blur-sm p-2.5 rounded-xl border border-emerald-100 flex items-center justify-between mb-3 shadow-sm shrink-0">
+          <div class="flex items-center space-x-3">
+            <div class="bg-emerald-100 border border-emerald-200 px-3 py-1 rounded-lg flex items-center space-x-1">
+              <span class="text-xs text-emerald-700 font-bold">Skor:</span>
+              <span id="simScore" class="font-fredoka text-lg font-bold text-emerald-800">0</span>
+            </div>
+            <div class="bg-amber-100 border border-amber-200 px-3 py-1 rounded-lg flex items-center space-x-1">
+              <span class="text-xs text-amber-700 font-bold">Tersisa:</span>
+              <span id="simRemaining" class="font-fredoka text-lg font-bold text-amber-800">10</span>
+            </div>
+          </div>
+
+          <div class="flex items-center space-x-2">
+            <button onclick="resetSimulation()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1 transition">
+              <span>🔄</span> <span>Reset Simulasi</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Simulation Workspace Grid (2 Columns: Items & Baskets) -->
+        <div class="flex-1 grid grid-cols-1 md:grid-cols-12 gap-3 overflow-hidden">
+          
+          <!-- Left/Top Item Container (Available Items) -->
+          <div class="md:col-span-5 bg-white/80 rounded-2xl p-3 border border-slate-200 flex flex-col justify-between overflow-hidden shadow-sm">
+            <div class="flex justify-between items-center mb-1">
+              <h4 class="font-fredoka text-xs md:text-sm font-bold text-slate-700">📦 Item yang Harus Diklasifikasi:</h4>
+              <span class="text-[10px] text-slate-400">Tarik atau Klik item</span>
+            </div>
+
+            <!-- Items Scrollable Container -->
+            <div id="itemsContainer" class="flex-1 overflow-y-auto custom-scrollbar p-1 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-3 gap-2">
+              <!-- Rendered via JS -->
+            </div>
+
+            <div id="selectionHint" class="hidden text-center text-[11px] font-semibold text-amber-600 bg-amber-50 p-1 rounded-lg mt-1 border border-amber-200">
+              Pilih keranjang tujuan di sebelah kanan! ➔
+            </div>
+          </div>
+
+          <!-- Right Baskets Drop Container -->
+          <div class="md:col-span-7 grid grid-cols-2 gap-3">
+            
+            <!-- BASKET 1: FRUITS -->
+            <div id="basketFruits" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, 'fruit')" onclick="handleBasketClick('fruit')" class="drop-zone bg-gradient-to-b from-amber-50 to-orange-50/70 border-2 border-dashed border-orange-300 rounded-2xl p-3 flex flex-col justify-between relative overflow-hidden shadow-sm hover:border-orange-400 cursor-pointer">
+              <div class="flex items-center justify-between border-b border-orange-200 pb-1.5">
+                <div class="flex items-center space-x-1.5">
+                  <span class="text-xl">🍎</span>
+                  <h4 class="font-fredoka text-sm md:text-base font-bold text-orange-900">FRUITS (Buah)</h4>
+                </div>
+                <span id="fruitCountBadge" class="bg-orange-200 text-orange-800 text-[10px] font-bold px-2 py-0.5 rounded-full">0 Item</span>
+              </div>
+
+              <!-- Content Area inside Fruit Basket -->
+              <div id="fruitBasketList" class="flex-1 overflow-y-auto custom-scrollbar my-2 grid grid-cols-3 gap-1.5 p-1 align-content-start">
+                <!-- Drop target content -->
+              </div>
+
+              <div class="text-center bg-orange-100/60 rounded-xl py-1 text-[11px] font-semibold text-orange-800 border border-orange-200/50">
+                Letakkan Buah Di Sini
+              </div>
+            </div>
+
+            <!-- BASKET 2: VEGETABLES -->
+            <div id="basketVegetables" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, 'vegetable')" onclick="handleBasketClick('vegetable')" class="drop-zone bg-gradient-to-b from-emerald-50 to-green-50/70 border-2 border-dashed border-emerald-300 rounded-2xl p-3 flex flex-col justify-between relative overflow-hidden shadow-sm hover:border-emerald-400 cursor-pointer">
+              <div class="flex items-center justify-between border-b border-emerald-200 pb-1.5">
+                <div class="flex items-center space-x-1.5">
+                  <span class="text-xl">🥦</span>
+                  <h4 class="font-fredoka text-sm md:text-base font-bold text-emerald-900">VEGETABLES (Sayur)</h4>
+                </div>
+                <span id="vegCountBadge" class="bg-emerald-200 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">0 Item</span>
+              </div>
+
+              <!-- Content Area inside Veg Basket -->
+              <div id="vegBasketList" class="flex-1 overflow-y-auto custom-scrollbar my-2 grid grid-cols-3 gap-1.5 p-1 align-content-start">
+                <!-- Drop target content -->
+              </div>
+
+              <div class="text-center bg-emerald-100/60 rounded-xl py-1 text-[11px] font-semibold text-emerald-800 border border-emerald-200/50">
+                Letakkan Sayuran Di Sini
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: LKPD (Interactive Student Worksheet) -->
+      <section id="content-lkpd" class="tab-content h-full flex flex-col hidden">
+        <div class="bg-white rounded-2xl p-3 md:p-4 shadow-sm border border-slate-100 h-full overflow-y-auto custom-scrollbar flex flex-col justify-between">
+          <div>
+            <!-- Header LKPD -->
+            <div class="flex justify-between items-center border-b border-slate-100 pb-2 mb-3">
+              <div>
+                <h3 class="font-fredoka text-base md:text-lg font-bold text-slate-800">Lembar Kerja Peserta Didik (LKPD)</h3>
+                <p class="text-xs text-slate-500">Materi: Kinds of Fruits and Vegetables (Fase C)</p>
+              </div>
+              <div id="lkpdScoreBadge" class="hidden bg-emerald-500 text-white px-3 py-1 rounded-xl font-bold font-fredoka text-sm">
+                Nilai: <span id="finalScoreText">0</span>/100
+              </div>
+            </div>
+
+            <!-- Quiz Questions Form -->
+            <form id="lkpdForm" class="space-y-4">
+              <!-- Q1 -->
+              <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                <p class="text-xs md:text-sm font-bold text-slate-800 mb-2">1. Spinach and Broccoli are classified as...</p>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                  <label class="flex items-center space-x-2 bg-white p-2 rounded-lg border border-slate-200 cursor-pointer hover:bg-emerald-50">
+                    <input type="radio" name="q1" value="fruit" class="text-emerald-500">
+                    <span>A. Fruits</span>
+                  </label>
+                  <label class="flex items-center space-x-2 bg-white p-2 rounded-lg border border-slate-200 cursor-pointer hover:bg-emerald-50">
+                    <input type="radio" name="q1" value="vegetable" class="text-emerald-500">
+                    <span>B. Vegetables</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Q2 -->
+              <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                <p class="text-xs md:text-sm font-bold text-slate-800 mb-2">2. Which fruit is sweet, yellow, and loved by monkeys?</p>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                  <label class="flex items-center space-x-2 bg-white p-2 rounded-lg border border-slate-200 cursor-pointer hover:bg-emerald-50">
+                    <input type="radio" name="q2" value="apple" class="text-emerald-500">
+                    <span>A. Apple</span>
+                  </label>
+                  <label class="flex items-center space-x-2 bg-white p-2 rounded-lg border border-slate-200 cursor-pointer hover:bg-emerald-50">
+                    <input type="radio" name="q2" value="banana" class="text-emerald-500">
+                    <span>B. Banana</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Q3 -->
+              <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                <p class="text-xs md:text-sm font-bold text-slate-800 mb-2">3. Complete the sentence: "Rabbits like to eat crunchy orange <input type="text" id="q3_input" placeholder="..." class="w-20 px-1 border-b-2 border-emerald-500 text-center font-bold text-emerald-700 bg-transparent focus:outline-none">."</p>
+              </div>
+
+              <!-- Q4 -->
+              <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                <p class="text-xs md:text-sm font-bold text-slate-800 mb-2">4. Is Watermelon a Fruit or a Vegetable?</p>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                  <label class="flex items-center space-x-2 bg-white p-2 rounded-lg border border-slate-200 cursor-pointer hover:bg-emerald-50">
+                    <input type="radio" name="q4" value="fruit" class="text-emerald-500">
+                    <span>A. Fruit</span>
+                  </label>
+                  <label class="flex items-center space-x-2 bg-white p-2 rounded-lg border border-slate-200 cursor-pointer hover:bg-emerald-50">
+                    <input type="radio" name="q4" value="vegetable" class="text-emerald-500">
+                    <span>B. Vegetable</span>
+                  </label>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          <!-- LKPD Action Controls -->
+          <div class="mt-3 flex justify-between items-center pt-2 border-t border-slate-100">
+            <button onclick="resetLKPD()" type="button" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold px-4 py-2 rounded-lg transition">
+              Reset Jawaban
+            </button>
+            <button onclick="submitLKPD()" type="button" class="bg-emerald-500 hover:bg-emerald-600 text-white font-fredoka text-sm font-bold px-6 py-2 rounded-lg shadow-md hover:shadow-lg transition">
+              Periksa Nilai ✍️
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 5: PENGEMBANG -->
+      <section id="content-pengembang" class="tab-content h-full flex flex-col hidden">
+        <div class="bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-slate-100 h-full overflow-y-auto custom-scrollbar flex flex-col justify-between">
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+            
+            <!-- Profile Info Card -->
+            <div class="md:col-span-5 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-4 text-white flex flex-col items-center text-center justify-center shadow-md">
+              <div class="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center text-4xl border-2 border-white/40 mb-3 shadow-inner">
+                👨‍🏫
+              </div>
+              <h4 class="font-fredoka text-lg font-bold">Guru Pengembang SD</h4>
+              <p class="text-xs text-emerald-100">Inovator Lab Maya Interaktif</p>
+              <div class="mt-3 bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-xl text-[11px] font-medium border border-white/20">
+                Pendidikan Sekolah Dasar (SD)
+              </div>
+            </div>
+
+            <!-- Details & CP (Capaian Pembelajaran) -->
+            <div class="md:col-span-7 space-y-3 text-slate-700 text-xs">
+              <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                <h5 class="font-bold text-slate-800 text-sm mb-1">🎯 Capaian Pembelajaran (Fase C)</h5>
+                <p class="text-slate-600 leading-relaxed">
+                  Pada akhir Fase C, peserta didik mampu mengidentifikasi, menyebutkan, dan mengelompokkan jenis kosakata buah-buahan (*fruits*) dan sayuran (*vegetables*) dalam bahasa Inggris secara tepat serta merespons teks lisan/visual sederhana.
+                </p>
+              </div>
+
+              <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                <h5 class="font-bold text-slate-800 text-sm mb-1">💡 Fitur Lab Maya Standalone</h5>
+                <ul class="list-disc list-inside space-y-1 text-slate-600">
+                  <li><strong>Full Offline Ready:</strong> Menggunakan Web Audio API & Speech Synthesis bawaan peramban.</li>
+                  <li><strong>Interaktif Multi-Modal:</strong> Mendukung Drag-and-Drop serta Mode Ketuk (Touch-friendly).</li>
+                  <li><strong>Tampilan Responsive 16:9:</strong> Didesain tanpa *scrollbar* utama agar nyaman di layar gawai siswa.</li>
+                </ul>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="text-center text-[11px] text-slate-400 mt-2">
+            © Lab Maya Interaktif Bahasa Inggris Sekolah Dasar. Dibuat dengan cinta untuk pembelajaran bermakna.
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- SUCCESS MODAL POPUP -->
+    <div id="successModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+      <div class="bg-white rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl border-4 border-amber-300 transform scale-95 transition-all">
+        <div class="text-5xl mb-2 animate-bounce">🏆</div>
+        <h3 class="font-fredoka text-2xl font-bold text-slate-800">Luar Biasa!</h3>
+        <p id="modalMessage" class="text-xs text-slate-600 my-3">Kamu berhasil menyelesaikan pengelompokkan dengan sempurna!</p>
+        <button onclick="closeModal()" class="bg-emerald-500 hover:bg-emerald-600 text-white font-fredoka font-bold px-6 py-2.5 rounded-full text-sm shadow-lg transition">
+          Lanjutkan Pembelajaran ✨
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 4. JAVASCRIPT LOGIC -->
+  <script>
+    // DATA KOSAKATA (10 Items)
+    const itemsData = [
+      { id: 'apple', name: 'Apple', translation: 'Apel', category: 'fruit', icon: '🍎', desc: 'A sweet red or green fruit.' },
+      { id: 'banana', name: 'Banana', translation: 'Pisang', category: 'fruit', icon: '🍌', desc: 'A long yellow sweet fruit.' },
+      { id: 'carrot', name: 'Carrot', translation: 'Wortel', category: 'vegetable', icon: '🥕', desc: 'An orange crunchy root vegetable.' },
+      { id: 'broccoli', name: 'Broccoli', translation: 'Brokoli', category: 'vegetable', icon: '🥦', desc: 'A green vegetable like a small tree.' },
+      { id: 'strawberry', name: 'Strawberry', translation: 'Stroberi', category: 'fruit', icon: '🍓', desc: 'A red juicy fruit with seeds.' },
+      { id: 'spinach', name: 'Spinach', translation: 'Bayam', category: 'vegetable', icon: '🥬', desc: 'Green leaf vegetable full of iron.' },
+      { id: 'potato', name: 'Potato', translation: 'Kentang', category: 'vegetable', icon: '🥔', desc: 'A starchy vegetable grown underground.' },
+      { id: 'mango', name: 'Mango', translation: 'Mangga', category: 'fruit', icon: '🥭', desc: 'A tropical sweet yellow fruit.' },
+      { id: 'watermelon', name: 'Watermelon', translation: 'Semangka', category: 'fruit', icon: '🍉', desc: 'A large green fruit with red inside.' },
+      { id: 'tomato', name: 'Tomato', translation: 'Tomat', category: 'vegetable', icon: '🍅', desc: 'Red juicy vegetable used in cooking.' }
+    ];
+
+    // App State
+    let selectedItemId = null;
+    let simScore = 0;
+    let placedItems = { fruit: [], vegetable: [] };
+    let currentTab = 'teori';
+
+    // 1. SPLASH SCREEN & INITIALIZATION
+    window.onload = function() {
+      let progress = 0;
+      const progressBar = document.getElementById('progressBar');
+      const loadingText = document.getElementById('loadingText');
+      const startBtn = document.getElementById('startBtn');
+      const loadingArea = document.getElementById('loadingArea');
+
+      const interval = setInterval(() => {
+        progress += 20;
+        progressBar.style.width = `${progress}%`;
+        loadingText.innerText = `Memuat Laboratorium Virtual... ${progress}%`;
+
+        if (progress >= 100) {
+          clearInterval(interval);
+          setTimeout(() => {
+            loadingArea.classList.add('hidden');
+            loadingText.classList.add('hidden');
+            startBtn.classList.remove('hidden');
+          }, 300);
+        }
+      }, 150);
+
+      renderVocabularyCards();
+      renderSimulationItems();
+      switchTab('teori');
+    };
+
+    function startApp() {
+      AudioEngine.playClick();
+      const splash = document.getElementById('splashScreen');
+      splash.classList.add('transition-opacity', 'duration-500', 'opacity-0');
+      setTimeout(() => {
+        splash.classList.add('hidden');
+      }, 500);
+    }
+
+    // SOUND TOGGLE
+    function toggleSound() {
+      AudioEngine.soundEnabled = !AudioEngine.soundEnabled;
+      const soundOn = document.getElementById('soundOnIcon');
+      const soundOff = document.getElementById('soundOffIcon');
+      const headerIcon = document.getElementById('headerSoundIcon');
+
+      if (AudioEngine.soundEnabled) {
+        soundOn.classList.remove('hidden');
+        soundOff.classList.add('hidden');
+        headerIcon.classList.remove('text-slate-400');
+        headerIcon.classList.add('text-emerald-600');
+        AudioEngine.playClick();
+      } else {
+        soundOn.classList.add('hidden');
+        soundOff.classList.remove('hidden');
+        headerIcon.classList.remove('text-emerald-600');
+        headerIcon.classList.add('text-slate-400');
+      }
+    }
+
+    // TAB NAVIGATION
+    function switchTab(tabId) {
+      AudioEngine.playClick();
+      currentTab = tabId;
+
+      // Update Nav Button Styles
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-emerald-500', 'text-white', 'shadow-sm');
+        btn.classList.add('text-slate-600');
+      });
+
+      const activeBtn = document.getElementById(`tab-${tabId}`);
+      if (activeBtn) {
+        activeBtn.classList.add('bg-emerald-500', 'text-white', 'shadow-sm');
+        activeBtn.classList.remove('text-slate-600');
+      }
+
+      // Toggle Content Views
+      document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.add('hidden');
+      });
+      const activeContent = document.getElementById(`content-${tabId}`);
+      if (activeContent) {
+        activeContent.classList.remove('hidden');
+      }
+    }
+
+    // RENDER VOCABULARY CARDS (TEORI)
+    function renderVocabularyCards() {
+      const grid = document.getElementById('vocabularyGrid');
+      grid.innerHTML = itemsData.map(item => `
+        <div class="bg-white rounded-xl p-3 border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md transition">
+          <div class="flex justify-between items-start">
+            <span class="text-3xl">${item.icon}</span>
+            <button onclick="AudioEngine.speak('${item.name}')" class="bg-emerald-50 hover:bg-emerald-100 p-1.5 rounded-lg text-emerald-600 transition" title="Listen Pronunciation">
+              🔊
+            </button>
+          </div>
+          <div class="mt-2">
+            <h4 class="font-fredoka text-sm font-bold text-slate-800">${item.name}</h4>
+            <p class="text-[11px] font-semibold text-emerald-600">${item.translation}</p>
+            <p class="text-[10px] text-slate-400 mt-1 leading-tight">${item.desc}</p>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // SIMULATION LOGIC (DRAG AND DROP + TOUCH/CLICK)
+    function renderSimulationItems() {
+      const container = document.getElementById('itemsContainer');
+      container.innerHTML = '';
+
+      itemsData.forEach(item => {
+        // Only render if item has not been placed yet
+        const isPlaced = placedItems.fruit.some(i => i.id === item.id) || placedItems.vegetable.some(i => i.id === item.id);
+        if (!isPlaced) {
+          const itemEl = document.createElement('div');
+          itemEl.id = `drag-item-${item.id}`;
+          itemEl.draggable = true;
+          itemEl.className = `draggable-item bg-white border border-slate-200 rounded-xl p-2 flex flex-col items-center justify-center text-center shadow-sm hover:border-emerald-400 ${selectedItemId === item.id ? 'ring-2 ring-amber-400 bg-amber-50' : ''}`;
+          
+          itemEl.innerHTML = `
+            <span class="text-2xl">${item.icon}</span>
+            <span class="font-fredoka text-xs font-bold text-slate-700 mt-1">${item.name}</span>
+          `;
+
+          // Desktop Drag events
+          itemEl.ondragstart = (e) => handleDragStart(e, item.id);
+          
+          // Mobile/Tap Fallback event
+          itemEl.onclick = () => handleItemSelect(item.id);
+
+          container.appendChild(itemEl);
+        }
+      });
+
+      updateSimulationBadges();
+    }
+
+    function handleItemSelect(itemId) {
+      AudioEngine.playClick();
+      selectedItemId = selectedItemId === itemId ? null : itemId;
+      const hint = document.getElementById('selectionHint');
+      
+      if (selectedItemId) {
+        hint.classList.remove('hidden');
+        const item = itemsData.find(i => i.id === itemId);
+        AudioEngine.speak(item.name);
+      } else {
+        hint.classList.add('hidden');
+      }
+      
+      renderSimulationItems();
+    }
+
+    function handleBasketClick(targetCategory) {
+      if (selectedItemId) {
+        processPlacement(selectedItemId, targetCategory);
+        selectedItemId = null;
+        document.getElementById('selectionHint').classList.add('hidden');
+      }
+    }
+
+    function handleDragStart(e, itemId) {
+      e.dataTransfer.setData('text/plain', itemId);
+      AudioEngine.playClick();
+    }
+
+    function handleDragOver(e) {
+      e.preventDefault();
+      e.currentTarget.classList.add('drag-over');
+    }
+
+    function handleDragLeave(e) {
+      e.currentTarget.classList.remove('drag-over');
+    }
+
+    function handleDrop(e, targetCategory) {
+      e.preventDefault();
+      e.currentTarget.classList.remove('drag-over');
+      const itemId = e.dataTransfer.getData('text/plain');
+      if (itemId) {
+        processPlacement(itemId, targetCategory);
+      }
+    }
+
+    function processPlacement(itemId, targetCategory) {
+      const item = itemsData.find(i => i.id === itemId);
+      if (!item) return;
+
+      if (item.category === targetCategory) {
+        // Correct Placement
+        AudioEngine.playSuccess();
+        placedItems[targetCategory].push(item);
+        simScore += 10;
+      } else {
+        // Incorrect Placement
+        AudioEngine.playError();
+        // Shake screen/basket effect
+        showToast('Oops! Kategori kurang tepat. Coba lagi!');
+        return;
+      }
+
+      renderSimulationItems();
+      renderBasketContents();
+
+      // Check Completion
+      const totalPlaced = placedItems.fruit.length + placedItems.vegetable.length;
+      if (totalPlaced === itemsData.length) {
+        setTimeout(() => {
+          showModal('Selamat! Kamu berhasil memilah semua Fruits & Vegetables dengan benar! 🏆');
+        }, 300);
+      }
+    }
+
+    function renderBasketContents() {
+      const fruitList = document.getElementById('fruitBasketList');
+      const vegList = document.getElementById('vegBasketList');
+
+      fruitList.innerHTML = placedItems.fruit.map(item => `
+        <div class="bg-white/90 border border-orange-200 rounded-lg p-1.5 flex flex-col items-center justify-center text-center shadow-2xs">
+          <span class="text-xl">${item.icon}</span>
+          <span class="font-bold text-[10px] text-orange-900">${item.name}</span>
+        </div>
+      `).join('');
+
+      vegList.innerHTML = placedItems.vegetable.map(item => `
+        <div class="bg-white/90 border border-emerald-200 rounded-lg p-1.5 flex flex-col items-center justify-center text-center shadow-2xs">
+          <span class="text-xl">${item.icon}</span>
+          <span class="font-bold text-[10px] text-emerald-900">${item.name}</span>
+        </div>
+      `).join('');
+
+      updateSimulationBadges();
+    }
+
+    function updateSimulationBadges() {
+      document.getElementById('simScore').innerText = simScore;
+      const remaining = itemsData.length - (placedItems.fruit.length + placedItems.vegetable.length);
+      document.getElementById('simRemaining').innerText = remaining;
+      document.getElementById('fruitCountBadge').innerText = `${placedItems.fruit.length} Item`;
+      document.getElementById('vegCountBadge').innerText = `${placedItems.vegetable.length} Item`;
+    }
+
+    function resetSimulation() {
+      AudioEngine.playReset();
+      simScore = 0;
+      selectedItemId = null;
+      placedItems = { fruit: [], vegetable: [] };
+      document.getElementById('selectionHint').classList.add('hidden');
+      renderSimulationItems();
+      renderBasketContents();
+    }
+
+    // LKPD EVALUATION LOGIC
+    function submitLKPD() {
+      AudioEngine.playClick();
+      const form = document.getElementById('lkpdForm');
+      let score = 0;
+
+      // Q1 Check
+      if (form.q1.value === 'vegetable') score += 25;
+      // Q2 Check
+      if (form.q2.value === 'banana') score += 25;
+      // Q3 Check
+      const q3Val = document.getElementById('q3_input').value.trim().toLowerCase();
+      if (q3Val === 'carrot' || q3Val === 'carrots') score += 25;
+      // Q4 Check
+      if (form.q4.value === 'fruit') score += 25;
+
+      const scoreBadge = document.getElementById('lkpdScoreBadge');
+      const scoreText = document.getElementById('finalScoreText');
+      scoreBadge.classList.remove('hidden');
+      scoreText.innerText = score;
+
+      if (score >= 75) {
+        AudioEngine.playSuccess();
+        showModal(`Hebat! Nilai LKPD kamu: ${score}/100. Kamu sangat memahami materi ini! 🌟`);
+      } else {
+        AudioEngine.playError();
+        showModal(`Nilai LKPD kamu: ${score}/100. Pelajari kembali tab Teori dan tingkatkan nilaimu! 💪`);
+      }
+    }
+
+    function resetLKPD() {
+      AudioEngine.playReset();
+      document.getElementById('lkpdForm').reset();
+      document.getElementById('q3_input').value = '';
+      document.getElementById('lkpdScoreBadge').classList.add('hidden');
+    }
+
+    // MODAL & TOAST HELPERS
+    function showModal(msg) {
+      document.getElementById('modalMessage').innerText = msg;
+      document.getElementById('successModal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      AudioEngine.playClick();
+      document.getElementById('successModal').classList.add('hidden');
+    }
+
+    function showToast(msg) {
+      const toast = document.createElement('div');
+      toast.className = 'fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white text-xs px-4 py-2 rounded-full shadow-lg z-50 transition duration-300';
+      toast.innerText = msg;
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        toast.remove();
+      }, 2000);
+    }
+  </script>
+</body>
+</html>
